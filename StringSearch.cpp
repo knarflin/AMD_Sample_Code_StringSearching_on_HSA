@@ -111,7 +111,7 @@ int StringSearch::setupStringSearch()
         return SDK_FAILURE;
     }
 
-    textLength = (cl_uint)(textFile.tellg());
+    textLength = (cl_ulong)(textFile.tellg());
     text = (cl_uchar*)malloc(textLength+1);
     memset(text, 0, textLength+1);
     CHECK_ALLOCATION(text, "Failed to allocate memory! (text)");
@@ -220,28 +220,29 @@ int StringSearch::setupCL()
                     &status);
     CHECK_OPENCL_ERROR(status, "clCreateBuffer failed. (subStrBuf)");
 
-    cl_uint totalSearchPos = textLength - (cl_uint)subStr.length() + 1;
+    cl_ulong totalSearchPos = textLength - (cl_ulong)subStr.length() + 1;
     searchLenPerWG = SEARCH_BYTES_PER_WORKITEM * LOCAL_SIZE;
     workGroupCount = (totalSearchPos + searchLenPerWG - 1) / searchLenPerWG;
 
     resultCountBuf = clCreateBuffer(
                          context,
                          CL_MEM_WRITE_ONLY,
-                         sizeof(cl_uint) * workGroupCount,
+                         sizeof(cl_ulong) * workGroupCount,
                          NULL,
                          &status);
     CHECK_OPENCL_ERROR(status, "clCreateBuffer failed. (resultCountBuf)");
 
+	//printf("textlength = %d\n", textLength);//debug point
     resultBuf = clCreateBuffer(
                     context,
                     CL_MEM_WRITE_ONLY,
-                    sizeof(cl_uint) * (textLength - subStr.length() + 1),
+                    sizeof(cl_ulong) * (textLength - subStr.length() + 1),
                     NULL,
                     &status);
     CHECK_OPENCL_ERROR(status, "clCreateBuffer failed. (resultBuf)");
 
-    availableLocalMemory = (cl_uint)deviceInfo.localMemSize;
-    availableLocalMemory -= (sizeof(cl_int) * LOCAL_SIZE *
+    availableLocalMemory = (cl_ulong)deviceInfo.localMemSize;
+    availableLocalMemory -= (sizeof(cl_ulong) * LOCAL_SIZE *
                              2);  // substract stack size
     availableLocalMemory -= (int)
                             subStr.length();               // substract local pattern size
@@ -308,7 +309,7 @@ int StringSearch::setupCL()
     CHECK_ERROR(status, SDK_SUCCESS, "Failed to unmap device buffer.(inputBuffer)");
 
     devResults.reserve(textLength - subStr.length() + 1);
-    memset(devResults.data(), 0, devResults.capacity() * sizeof(cl_uint));
+    memset(devResults.data(), 0, devResults.capacity() * sizeof(cl_ulong));
 
     return SDK_SUCCESS;
 }
@@ -349,14 +350,14 @@ int StringSearch::runCLKernels()
     status = clSetKernelArg(*kernel, 0, sizeof(cl_mem), (void*)&textBuf);
     CHECK_OPENCL_ERROR(status, "clSetKernelArg failed. (textBuf)");
 
-    status = clSetKernelArg(*kernel, 1, sizeof(cl_uint), (void*)&textLength);
+    status = clSetKernelArg(*kernel, 1, sizeof(cl_ulong), (void*)&textLength);
     CHECK_OPENCL_ERROR(status, "clSetKernelArg failed. (textLength)");
 
     status = clSetKernelArg(*kernel, 2, sizeof(cl_mem), (void*)&subStrBuf);
     CHECK_OPENCL_ERROR(status, "clSetKernelArg failed. (subStrBuf)");
 
     int length = (int)subStr.length();
-    status = clSetKernelArg(*kernel, 3, sizeof(cl_uint), (void*)&(length));
+    status = clSetKernelArg(*kernel, 3, sizeof(cl_ulong), (void*)&(length));
     CHECK_OPENCL_ERROR(status, "clSetKernelArg failed. (subStr.length())");
 
     status = clSetKernelArg(*kernel, 4, sizeof(cl_mem), (void*)&resultBuf);
@@ -365,7 +366,7 @@ int StringSearch::runCLKernels()
     status = clSetKernelArg(*kernel, 5, sizeof(cl_mem), (void*)&resultCountBuf);
     CHECK_OPENCL_ERROR(status, "clSetKernelArg failed. (resultCountBuf)");
 
-    status = clSetKernelArg(*kernel, 6, sizeof(cl_int), (void*)&searchLenPerWG);
+    status = clSetKernelArg(*kernel, 6, sizeof(cl_ulong), (void*)&searchLenPerWG);
     CHECK_OPENCL_ERROR(status, "clSetKernelArg failed. (searchLenPerWG)");
 
     status = clSetKernelArg(*kernel, 7, subStr.length(), NULL);
@@ -373,12 +374,12 @@ int StringSearch::runCLKernels()
 
     if(kernelType == KERNEL_LOADBALANCE)
     {
-        status = clSetKernelArg(*kernel, 8, (sizeof(cl_int) * LOCAL_SIZE * 2), NULL);
+        status = clSetKernelArg(*kernel, 8, (sizeof(cl_ulong) * LOCAL_SIZE * 2), NULL);
         CHECK_OPENCL_ERROR(status, "clSetKernelArg failed. (stack)");
 
         if(enable2ndLevelFilter)
         {
-            status = clSetKernelArg(*kernel, 9, (sizeof(cl_int) * LOCAL_SIZE * 2), NULL);
+            status = clSetKernelArg(*kernel, 9, (sizeof(cl_ulong) * LOCAL_SIZE * 2), NULL);
             CHECK_OPENCL_ERROR(status, "clSetKernelArg failed. (stack2)");
         }
     }
@@ -436,10 +437,13 @@ int StringSearch::runKernel(std::string kernelName)
     kernelTime = (double)(sampleTimer->readTimer(timer));
 
     // Verify Results
+
+/* debug point
     if(verifyResults() != SDK_SUCCESS)
     {
         return SDK_FAILURE;
     }
+*/
 
     // Print performance statistics
     printStats();
@@ -493,15 +497,15 @@ void StringSearch::cpuReferenceImpl()
         return;
     }
 
-    cl_uint hlen = textLength;
-    cl_uint last = (cl_uint)subStr.length() - 1;
-    cl_uint badCharSkip[UCHAR_MAX + 1];
+    cl_ulong hlen = textLength;
+    cl_ulong last = (cl_ulong)subStr.length() - 1;
+    cl_ulong badCharSkip[UCHAR_MAX + 1];
 
     // Initialize the table with default values
-    cl_uint scan = 0;
+    cl_ulong scan = 0;
     for(scan = 0; scan <= UCHAR_MAX; ++scan)
     {
-        badCharSkip[scan] = (cl_uint)subStr.length();
+        badCharSkip[scan] = (cl_ulong)subStr.length();
     }
 
     // populate the table with analysis on pattern
@@ -519,7 +523,7 @@ void StringSearch::cpuReferenceImpl()
     }
 
     // search the text
-    cl_uint curPos = 0;
+    cl_ulong curPos = 0;
     while((textLength - curPos) > last)
     {
         int p=last;
@@ -539,26 +543,26 @@ void StringSearch::cpuReferenceImpl()
 int StringSearch::verifyResults()
 {
     // Read Results Count per workGroup
-    cl_uint *ptrCountBuff;
+    cl_ulong *ptrCountBuff;
     int status = mapBuffer( resultCountBuf, ptrCountBuff,
-                            workGroupCount * sizeof(cl_uint), CL_MAP_READ);
+                            workGroupCount * sizeof(cl_ulong), CL_MAP_READ);
     CHECK_ERROR(status, SDK_SUCCESS,
                 "Failed to map device buffer.(resultCountBuf)");
 
     // Read the result buffer
-    cl_uint *ptrBuff;
+    cl_ulong *ptrBuff; //something wierd, cl_uint here, cl_ulong in the next line
     status = mapBuffer( resultBuf, ptrBuff,
-                        (textLength - subStr.length() + 1) * sizeof(cl_uint), CL_MAP_READ);
+                        (textLength - subStr.length() + 1) * sizeof(cl_ulong), CL_MAP_READ);
     CHECK_ERROR(status, SDK_SUCCESS, "Failed to map device buffer.(resultBuf)");
 
-    cl_uint count = ptrCountBuff[0];
-    for(cl_uint i=1; i<workGroupCount; ++i)
+    cl_ulong count = ptrCountBuff[0];
+    for(cl_ulong i=1; i<workGroupCount; ++i)
     {
-        cl_uint found = ptrCountBuff[i];
+        cl_ulong found = ptrCountBuff[i];
         if(found > 0)
         {
             memcpy((ptrBuff + count), (ptrBuff + (i * searchLenPerWG)),
-                   found * sizeof(cl_uint));
+                   found * sizeof(cl_ulong));
             count += found;
         }
     }
@@ -584,10 +588,10 @@ int StringSearch::verifyResults()
         }
     }
 
-    printArray<cl_uint>("Number of matches : ", &count, 1, 1);
+    printArray<cl_ulong>("Number of matches : ", &count, 1, 1);
     if(!sampleArgs->quiet)
     {
-        printArray<cl_uint>("Positions : ", ptrBuff, count, 1);
+        printArray<cl_ulong>("Positions : ", ptrBuff, count, 1);
     }
 
     // un-map resultCountBuf

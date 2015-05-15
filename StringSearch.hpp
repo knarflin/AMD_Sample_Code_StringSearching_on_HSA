@@ -47,11 +47,11 @@ enum KERNELS
 class StringSearch
 {
         cl_uchar *text;
-        cl_uint  textLength;
+        cl_ulong  textLength;
         std::string subStr;
         std::string file;
-        std::vector<cl_uint> devResults;
-        std::vector<cl_uint> cpuResults;
+        std::vector<cl_ulong> devResults;
+        std::vector<cl_ulong> cpuResults;
 
         cl_double setupTime;            /**< time taken to setup OpenCL resources and building kernel */
         cl_double kernelTime;           /**< time taken to run kernel and read result back */
@@ -76,8 +76,8 @@ class StringSearch
 
         cl_bool byteRWSupport;
         cl_uint workGroupCount;
-        cl_uint availableLocalMemory;
-        cl_uint searchLenPerWG;
+        cl_ulong availableLocalMemory;
+        cl_ulong searchLenPerWG;
         cl_kernel* kernel;
         int kernelType;
         bool caseSensitive;
