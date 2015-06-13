@@ -121,8 +121,7 @@ int StringSearch::setupStringSearch()
 	fileOffset = (cl_long)textFile.tellg() - (cl_ulong)subStr.length() + 1;
 	//std::cout << "DEBUG: fileOffset == " << fileOffset << std::endl; // debug point
 	textFile.close();
-
-	/*
+	
 	if(subStr.length() == 0)
 	{
 		std::cout << "\nError: Sub-String not specified..." << std::endl;
@@ -140,7 +139,6 @@ int StringSearch::setupStringSearch()
 	{
 		std::cout << "Search Pattern : " << subStr << std::endl;
 	}
-	*/
 
 	return SDK_SUCCESS;
 }
@@ -314,6 +312,7 @@ int StringSearch::setupCL()
 	return SDK_SUCCESS;
 }
 
+/*
 int StringSearch::setup()
 {
 	if(setupStringSearch() != SDK_SUCCESS)
@@ -328,6 +327,7 @@ int StringSearch::setup()
 
 	return SDK_SUCCESS;
 }
+*/
 
 int StringSearch::runCLKernels()
 {
@@ -671,12 +671,24 @@ int main(int argc, char* argv[])
 		return clStringSearch.genBinaryImage();
 	}
 
+	if(clStringSearch.setupStringSearch() != SDK_SUCCESS)
+	{
+		return SDK_FAILURE;
+	}
+
 	do{
+		/*
 		// Setup
 		status = clStringSearch.setup();
 		if(status != SDK_SUCCESS)
 		{
 			return status;
+		}
+		*/
+
+		if(clStringSearch.setupCL() != SDK_SUCCESS)
+		{
+			return SDK_FAILURE;
 		}
 
 		// Run

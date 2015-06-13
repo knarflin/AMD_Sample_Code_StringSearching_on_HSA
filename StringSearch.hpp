@@ -173,7 +173,7 @@ class StringSearch
      * @return SDK_SUCCESS on success and SDK_FAILURE on failure
      *******************************************************************************
      */
-    int setup();
+    int setup(); //no need if the contents are pasted to main()
 
     /**
      *******************************************************************************
@@ -213,7 +213,6 @@ class StringSearch
      */
     void printStats();
 
-    private:
     /**
      *******************************************************************************
      * @fn setupStringSearch
@@ -245,6 +244,8 @@ class StringSearch
      * @return SDK_SUCCESS on success and SDK_FAILURE on failure
      *******************************************************************************
      */
+    private:
+
     int runKernel(std::string kernelName);
 
     /**
