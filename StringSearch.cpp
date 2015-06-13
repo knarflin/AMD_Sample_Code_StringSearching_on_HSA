@@ -32,18 +32,6 @@ int StringSearch::initialize()
 		return SDK_FAILURE;
 	}
 
-	Option* iteration_option = new Option;
-	CHECK_ALLOCATION(iteration_option, "Memory allocation error.\n");
-
-	iteration_option->_sVersion = "i";
-	iteration_option->_lVersion = "iterations";
-	iteration_option->_description = "Number of iterations to execute kernel";
-	iteration_option->_type = CA_ARG_INT;
-	iteration_option->_value = &iterations;
-
-	sampleArgs->AddOption(iteration_option);
-	delete iteration_option;
-
 	Option* substr_option = new Option;
 	CHECK_ALLOCATION(substr_option, "Memory allocation error.\n");
 
@@ -118,7 +106,7 @@ int StringSearch::setupStringSearch()
 
 	fileLength = (cl_ulong)(textFile.tellg());
 	textLength = (fileLength - fileOffset <= CL_DEVICE_MEMORY_LIMIT)? (fileLength-fileOffset) : CL_DEVICE_MEMORY_LIMIT;
-	std::cout << "DEBUG: textLength == " << textLength << std::endl; // debug point
+	//std::cout << "DEBUG: textLength == " << textLength << std::endl; // debug point
 
 	text = (cl_uchar*)malloc(textLength+1); //debug point: +1 ?
 	memset(text, 0, textLength+1);	//debug point: +1 ?
@@ -131,9 +119,10 @@ int StringSearch::setupStringSearch()
 		return SDK_FAILURE;
 	}
 	fileOffset = (cl_long)textFile.tellg() - (cl_ulong)subStr.length() + 1;
-	std::cout << "DEBUG: fileOffset == " << fileOffset << std::endl; // debug point
+	//std::cout << "DEBUG: fileOffset == " << fileOffset << std::endl; // debug point
 	textFile.close();
 
+	/*
 	if(subStr.length() == 0)
 	{
 		std::cout << "\nError: Sub-String not specified..." << std::endl;
@@ -151,6 +140,7 @@ int StringSearch::setupStringSearch()
 	{
 		std::cout << "Search Pattern : " << subStr << std::endl;
 	}
+	*/
 
 	return SDK_SUCCESS;
 }
@@ -326,29 +316,15 @@ int StringSearch::setupCL()
 
 int StringSearch::setup()
 {
-	if(iterations < 1)
-	{
-		std::cout<<"Error, iterations cannot be 0 or negative. Exiting..\n";
-		exit(0);
-	}
 	if(setupStringSearch() != SDK_SUCCESS)
 	{
 		return SDK_FAILURE;
 	}
 
-	// create and initialize timers
-	int timer = sampleTimer->createTimer();
-	sampleTimer->resetTimer(timer);
-	sampleTimer->startTimer(timer);
-
 	if(setupCL() != SDK_SUCCESS)
 	{
 		return SDK_FAILURE;
 	}
-
-	sampleTimer->stopTimer(timer);
-	// Compute setup time
-	setupTime = (double)(sampleTimer->readTimer(timer));
 
 	return SDK_SUCCESS;
 }
@@ -399,7 +375,7 @@ int StringSearch::runCLKernels()
 
 	// To verify whether device supports the specified workgroup size(LOCAL_SIZE) or not ?;
 	if(localThreads > deviceInfo.maxWorkGroupSize)
-		localThreads =  deviceInfo.maxWorkGroupSize ;
+		localThreads =  deviceInfo.maxWorkGroupSize;
 
 	size_t globalThreads = localThreads * workGroupCount;
 	cl_event ndrEvt;
@@ -426,35 +402,20 @@ int StringSearch::runCLKernels()
 
 int StringSearch::runKernel(std::string kernelName)
 {
-	std::cout << "\nExecuting " << kernelName << " for " <<
-		iterations << " iterations" << std::endl;
 	std::cout << "-------------------------------------------" << std::endl;
 
-	int timer = sampleTimer->createTimer();
-	sampleTimer->resetTimer(timer);
-	sampleTimer->startTimer(timer);
-
-	for(int i = 0; i < iterations; i++)
+	// Arguments are set and execution call is enqueued on command buffer
+	if(runCLKernels() != SDK_SUCCESS)
 	{
-		// Arguments are set and execution call is enqueued on command buffer
-		if(runCLKernels() != SDK_SUCCESS)
-		{
-			return SDK_FAILURE;
-		}
+		return SDK_FAILURE;
 	}
-
-	sampleTimer->stopTimer(timer);
-	kernelTime = (double)(sampleTimer->readTimer(timer));
 
 	// Verify Results
 
-	   if(verifyResults() != SDK_SUCCESS)
-	   {
-		   return SDK_FAILURE;
-	   }
-
-	// Print performance statistics
-	printStats();
+	if(verifyResults() != SDK_SUCCESS)
+	{
+		return SDK_FAILURE;
+	}
 
 	return SDK_SUCCESS;
 }
@@ -463,15 +424,6 @@ int StringSearch::run()
 {
 	kernelType = KERNEL_NAIVE;
 	kernel = &kernelNaive;
-
-	for(int i = 0; i < 2 && iterations != 1; i++)
-	{
-		// Arguments are set and execution call is enqueued on command buffer
-		if(runCLKernels() != SDK_SUCCESS)
-		{
-			return SDK_FAILURE;
-		}
-	}
 
 	if(subStr.length() == 1)
 	{
@@ -656,28 +608,6 @@ int StringSearch::cleanup()
 	return SDK_SUCCESS;
 }
 
-void StringSearch::printStats()
-{
-	if(sampleArgs->timing)
-	{
-		std::string strArray[4] =
-		{
-			"Source Text size (bytes)",
-			"Setup Time(sec)",
-			"Avg. kernel time (sec)",
-			"Bytes/sec"
-		};
-		std::string stats[4];
-		double avgKernelTime = kernelTime / iterations;
-
-		stats[0] = toString(textLength, std::dec);
-		stats[1] = toString(setupTime, std::dec);
-		stats[2] = toString(avgKernelTime, std::dec);
-		stats[3] = toString((textLength/avgKernelTime), std::dec);
-
-		printStatistics(strArray, stats, 4);
-	}
-}
 
 	template<typename T>
 int StringSearch::mapBuffer(cl_mem deviceBuffer, T* &hostPointer,
