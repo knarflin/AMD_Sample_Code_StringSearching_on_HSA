@@ -21,7 +21,7 @@
 
 bool StringSearch::posAtEOF()
 {
-    return ( fileOffset < fileLength )? false: true;
+    return ( fileOffset <= fileLength - subStr.length() )? false: true; //debug point: - strlen?
 }
 
 int StringSearch::initialize()
@@ -114,11 +114,11 @@ int StringSearch::setupStringSearch()
 	{
 		std::cout << "\n Unable to open file: " << file << std::endl;
 		return SDK_FAILURE;
-    }
+	}
 
 	fileLength = (cl_ulong)(textFile.tellg());
-	printf( "DEBUG: textLength == %lld\n", (long long)textLength );
 	textLength = (fileLength - fileOffset <= CL_DEVICE_MEMORY_LIMIT)? (fileLength-fileOffset) : CL_DEVICE_MEMORY_LIMIT;
+	std::cout << "DEBUG: textLength == " << textLength << std::endl; // debug point
 
 	text = (cl_uchar*)malloc(textLength+1); //debug point: +1 ?
 	memset(text, 0, textLength+1);	//debug point: +1 ?
@@ -130,7 +130,8 @@ int StringSearch::setupStringSearch()
 		textFile.close();
 		return SDK_FAILURE;
 	}
-	fileOffset = textFile.tellg();
+	fileOffset = (cl_long)textFile.tellg() - (cl_ulong)subStr.length() + 1;
+	std::cout << "DEBUG: fileOffset == " << fileOffset << std::endl; // debug point
 	textFile.close();
 
 	if(subStr.length() == 0)
@@ -365,7 +366,7 @@ int StringSearch::runCLKernels()
 	status = clSetKernelArg(*kernel, 2, sizeof(cl_mem), (void*)&subStrBuf);
 	CHECK_OPENCL_ERROR(status, "clSetKernelArg failed. (subStrBuf)");
 
-    cl_ulong length = (cl_ulong)subStr.length();
+	cl_ulong length = (cl_ulong)subStr.length();
 	status = clSetKernelArg(*kernel, 3, sizeof(cl_ulong), (void*)&(length));
 	CHECK_OPENCL_ERROR(status, "clSetKernelArg failed. (subStr.length())");
 
@@ -447,12 +448,10 @@ int StringSearch::runKernel(std::string kernelName)
 
 	// Verify Results
 
-	/* debug point
 	   if(verifyResults() != SDK_SUCCESS)
 	   {
-	   return SDK_FAILURE;
+		   return SDK_FAILURE;
 	   }
-	 */
 
 	// Print performance statistics
 	printStats();
@@ -495,6 +494,7 @@ int StringSearch::run()
 			return SDK_FAILURE;
 		}
 	}
+
 	return SDK_SUCCESS;
 }
 
@@ -577,6 +577,7 @@ int StringSearch::verifyResults()
 	}
 	std::sort(ptrBuff, ptrBuff+count);
 
+	/*
 	if(sampleArgs->verify)
 	{
 		// Rreference implementation on host device
@@ -596,11 +597,18 @@ int StringSearch::verifyResults()
 			status = SDK_FAILURE;
 		}
 	}
+	*/
 
 	printArray<cl_ulong>("Number of matches : ", &count, 1, 1);
 	if(!sampleArgs->quiet)
-	{
-		printArray<cl_ulong>("Positions : ", ptrBuff, count, 1);
+	{	
+		//print result array
+		std::cout << "Positions:";
+		unsigned long previous_fileOffset = fileOffset - textLength + subStr.length() - 1;
+		for( size_t i=0; i<count; i++ ){
+			std::cout << " " << *(unsigned long*)(ptrBuff + i) + previous_fileOffset;
+		}
+		std::cout << std::endl;
 	}
 
 	// un-map resultCountBuf
@@ -694,8 +702,7 @@ int StringSearch::mapBuffer(cl_mem deviceBuffer, T* &hostPointer,
 	return SDK_SUCCESS;
 }
 
-	int
-StringSearch::unmapBuffer(cl_mem deviceBuffer, void* hostPointer)
+int StringSearch::unmapBuffer(cl_mem deviceBuffer, void* hostPointer)
 {
 	cl_int status;
 	status = clEnqueueUnmapMemObject(commandQueue,
@@ -716,46 +723,47 @@ int main(int argc, char* argv[])
 	int status = 0;
 	// Create StringSearch object
 	StringSearch clStringSearch;
-    
-    do{
-        // Initialization
-        if(clStringSearch.initialize() != SDK_SUCCESS)
-        {
-            return SDK_FAILURE;
-        }
 
-        // Parse command line options
-        if(clStringSearch.sampleArgs->parseCommandLine(argc, argv) != SDK_SUCCESS)
-        {
-            return SDK_FAILURE;
-        }
+	// Initialization
+	if(clStringSearch.initialize() != SDK_SUCCESS) //debug point
+	{
+		return SDK_FAILURE;
+	}
 
-        if(clStringSearch.sampleArgs->isDumpBinaryEnabled())
-        {
-            return clStringSearch.genBinaryImage();
-        }
+	// Parse command line options
+	if(clStringSearch.sampleArgs->parseCommandLine(argc, argv) != SDK_SUCCESS)
+	{
+		return SDK_FAILURE;
+	}
 
-        // Setup
-        status = clStringSearch.setup();
-        if(status != SDK_SUCCESS)
-        {
-            return status ;
-        }
+	if(clStringSearch.sampleArgs->isDumpBinaryEnabled())
+	{
+		return clStringSearch.genBinaryImage();
+	}
 
-        // Run
-        if(clStringSearch.run() != SDK_SUCCESS)
-        {
-            return SDK_FAILURE;
-        }
+	do{
+		// Setup
+		status = clStringSearch.setup();
+		if(status != SDK_SUCCESS)
+		{
+			return status;
+		}
 
-        //std::cout << "still running, " << __FILE__ << ":" << __LINE__ << std::endl; //debug point
-    } while( !clStringSearch.posAtEOF() );
+		// Run
+		if(clStringSearch.run() != SDK_SUCCESS)
+		{
+			return SDK_FAILURE;
+		}
 
-    // Cleanup resources created
-    if(clStringSearch.cleanup() != SDK_SUCCESS)
-    {
-        return SDK_FAILURE;
-    }
+		if(clStringSearch.cleanup() != SDK_SUCCESS)
+		{
+			return SDK_FAILURE;
+		}
 
-    return SDK_SUCCESS;
+		//std::cout << "still running, " << __FILE__ << ":" << __LINE__ << std::endl; //debug point
+	} while( !clStringSearch.posAtEOF() );
+
+	// Cleanup resources created
+
+	return SDK_SUCCESS;
 }

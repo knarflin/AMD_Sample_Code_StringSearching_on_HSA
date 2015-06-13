@@ -56,7 +56,7 @@ __kernel void
       const ulong patternLength,
       __global ulong* resultBuffer,
       __global ulong* resultCountPerWG,
-      const ulong maxSearchLength,
+      const ulong maxSearchLength,	//512 * 256
       __local uchar* localPattern)
 {  
     __local volatile int groupSuccessCounter;
@@ -136,9 +136,9 @@ __kernel void
     int groupIdx = get_group_id(0);
         
     __local int stack1Counter;
-    __local int stack2Counter; 
+    __local int stack2Counter;
     __local int groupSuccessCounter;
-    
+
     // Initialize the local variaables
     if(localIdx == 0)
     {
@@ -146,7 +146,7 @@ __kernel void
         stack1Counter = 0;
         stack2Counter = 0;
     }
-    
+
     // Last search idx for all work items
     ulong lastSearchIdx = textLength - patternLength + 1;
     ulong stackSize = 0;

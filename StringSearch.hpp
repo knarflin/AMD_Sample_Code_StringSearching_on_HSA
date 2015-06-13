@@ -33,7 +33,7 @@ using namespace appsdk;
 #define LOCAL_SIZE      256
 #define COMPARE(x,y)    ((caseSensitive) ? (x==y) : (toupper(x) == toupper(y)))
 #define SEARCH_BYTES_PER_WORKITEM   512
-#define CL_DEVICE_MEMORY_LIMIT	10000000
+#define CL_DEVICE_MEMORY_LIMIT 74500000
 
 enum KERNELS
 {
@@ -105,9 +105,11 @@ class StringSearch
         fileLength(0),
         fileOffset(0),
         //subStr("if there is a failure to allocate resources required by the"),
-        subStr("CATTGGC"),
+        //subStr("CATTGGC"),
+        subStr("89012"),
         //file("StringSearch_Input.txt"),
-        file("ATCG_100M.txt"),
+		//file("ATCG_10G.txt"),
+        file("input.txt"),
         setupTime(0),
         kernelTime(0),
         devices(NULL),
