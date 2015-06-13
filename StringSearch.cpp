@@ -312,23 +312,6 @@ int StringSearch::setupCL()
 	return SDK_SUCCESS;
 }
 
-/*
-int StringSearch::setup()
-{
-	if(setupStringSearch() != SDK_SUCCESS)
-	{
-		return SDK_FAILURE;
-	}
-
-	if(setupCL() != SDK_SUCCESS)
-	{
-		return SDK_FAILURE;
-	}
-
-	return SDK_SUCCESS;
-}
-*/
-
 int StringSearch::runCLKernels()
 {
 	cl_int status;
@@ -677,15 +660,6 @@ int main(int argc, char* argv[])
 	}
 
 	do{
-		/*
-		// Setup
-		status = clStringSearch.setup();
-		if(status != SDK_SUCCESS)
-		{
-			return status;
-		}
-		*/
-
 		if(clStringSearch.setupCL() != SDK_SUCCESS)
 		{
 			return SDK_FAILURE;
