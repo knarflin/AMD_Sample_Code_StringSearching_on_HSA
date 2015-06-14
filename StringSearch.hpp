@@ -166,17 +166,6 @@ class StringSearch
 
     /**
      *******************************************************************************
-     * @fn setup
-     * @brief Override from SDKSample, adjust width and height of execution domain,
-     *        perform all sample setup.
-     *
-     * @return SDK_SUCCESS on success and SDK_FAILURE on failure
-     *******************************************************************************
-     */
-    int setup(); //no need if the contents are pasted to main()
-
-    /**
-     *******************************************************************************
      * @fn run
      * @brief Override from SDKSample. Run OpenCL StringSearch kernel.
      *
@@ -203,7 +192,17 @@ class StringSearch
      * @return SDK_SUCCESS on success and SDK_FAILURE on failure
      *******************************************************************************
      */
-    int cleanup();
+    int cleanup_permenant();
+
+    /**
+     *******************************************************************************
+     * @fn cleanup
+     * @brief Override from SDKSample. Cleanup memory allocations.
+     *
+     * @return SDK_SUCCESS on success and SDK_FAILURE on failure
+     *******************************************************************************
+     */
+    int cleanup_per_loop();
 
     /**
      *******************************************************************************
@@ -226,13 +225,23 @@ class StringSearch
     /**
      *******************************************************************************
      * @fn setupCL
-     * @brief OpenCL related initialisations. Set up Context, Device list, Command Queue,
-     *         Memory buffers. Build CL kernel program executable
+     * @brief OpenCL related initialisations. Set up Context, Device list, Command Queue.
      *
      * @return SDK_SUCCESS on success and SDK_FAILURE on failure
      *******************************************************************************
      */
-    int setupCL();
+    int setupCL_permenant();
+
+    /**
+     *******************************************************************************
+     * @fn setupCL
+     * @brief OpenCL related initialisations. Set up Memory buffers. 
+     * Build CL kernel program executable
+     *
+     * @return SDK_SUCCESS on success and SDK_FAILURE on failure
+     *******************************************************************************
+     */
+    int setupCL_per_loop();
 
     /**
      *******************************************************************************

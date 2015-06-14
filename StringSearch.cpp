@@ -106,7 +106,7 @@ int StringSearch::setupStringSearch()
 
 	fileLength = (cl_ulong)(textFile.tellg());
 	textLength = (fileLength - fileOffset <= CL_DEVICE_MEMORY_LIMIT)? (fileLength-fileOffset) : CL_DEVICE_MEMORY_LIMIT;
-	//std::cout << "DEBUG: textLength == " << textLength << std::endl; // debug point
+	// std::cout << "DEBUG: textLength == " << textLength << std::endl; // debug point
 
 	text = (cl_uchar*)malloc(textLength+1); //debug point: +1 ?
 	memset(text, 0, textLength+1);	//debug point: +1 ?
@@ -119,15 +119,9 @@ int StringSearch::setupStringSearch()
 		return SDK_FAILURE;
 	}
 	fileOffset = (cl_long)textFile.tellg() - (cl_ulong)subStr.length() + 1;
-	//std::cout << "DEBUG: fileOffset == " << fileOffset << std::endl; // debug point
+	// std::cout << "DEBUG: fileOffset == " << fileOffset << std::endl; // debug point
 	textFile.close();
 	
-	if(subStr.length() == 0)
-	{
-		std::cout << "\nError: Sub-String not specified..." << std::endl;
-		return SDK_FAILURE;
-	}
-
 	if (textLength < subStr.length())
 	{
 		std::cout << "\nText size less than search pattern (" << textLength
@@ -135,15 +129,10 @@ int StringSearch::setupStringSearch()
 		return SDK_FAILURE;
 	}
 
-	if(!sampleArgs->quiet)
-	{
-		std::cout << "Search Pattern : " << subStr << std::endl;
-	}
-
 	return SDK_SUCCESS;
 }
 
-int StringSearch::setupCL()
+int StringSearch::setupCL_permenant()
 {
 	cl_int status = 0;
 	cl_device_type dType;
@@ -167,7 +156,7 @@ int StringSearch::setupCL()
 	int retValue = getPlatform(platform, sampleArgs->platformId,
 			sampleArgs->isPlatformEnabled());
 	CHECK_ERROR(retValue, SDK_SUCCESS, "getPlatform() failed");
-
+	
 	// Display available devices.
 	retValue = displayDevices(platform, dType);
 	CHECK_ERROR(retValue, SDK_SUCCESS, "displayDevices() failed");
@@ -201,6 +190,26 @@ int StringSearch::setupCL()
 			0,
 			&status);
 	CHECK_OPENCL_ERROR(status, "clCreateCommandQueue failed.");
+
+	// Checking Substring routine
+	if(subStr.length() == 0)
+	{
+		std::cout << "\nError: Sub-String not specified..." << std::endl;
+		return SDK_FAILURE;
+	}
+
+	if(!sampleArgs->quiet)
+	{
+		std::cout << "Search Pattern : " << subStr << std::endl;
+	}
+
+	return SDK_SUCCESS;
+}
+
+int StringSearch::setupCL_per_loop()
+{
+	cl_int status = 0;
+	int retValue;
 
 	textBuf = clCreateBuffer(
 			context,
@@ -558,9 +567,9 @@ int StringSearch::verifyResults()
 	return status;
 }
 
-int StringSearch::cleanup()
+int StringSearch::cleanup_per_loop()
 {
-	// Releases OpenCL resources (Context, Memory etc.)
+	// Releases OpenCL resources created in loop
 	cl_int status;
 
 	status = clReleaseMemObject(textBuf);
@@ -578,6 +587,15 @@ int StringSearch::cleanup()
 	status = clReleaseKernel(kernelLoadBalance);
 	CHECK_OPENCL_ERROR(status, "clReleaseKernel(kernelLoadBalance) failed.");
 
+	return SDK_SUCCESS;
+}
+
+int StringSearch::cleanup_permenant()
+{	
+	// Release OpenCL resource created out of the loop
+
+	cl_int status;
+
 	status = clReleaseProgram(program);
 	CHECK_OPENCL_ERROR(status, "clReleaseProgram(program) failed.");
 
@@ -588,6 +606,7 @@ int StringSearch::cleanup()
 	CHECK_OPENCL_ERROR(status, "clReleaseContext(context) failed.");
 
 	FREE(devices);
+
 	return SDK_SUCCESS;
 }
 
@@ -654,13 +673,18 @@ int main(int argc, char* argv[])
 		return clStringSearch.genBinaryImage();
 	}
 
-	if(clStringSearch.setupStringSearch() != SDK_SUCCESS)
+	if(clStringSearch.setupCL_permenant() != SDK_SUCCESS)
 	{
 		return SDK_FAILURE;
 	}
 
 	do{
-		if(clStringSearch.setupCL() != SDK_SUCCESS)
+		if(clStringSearch.setupStringSearch() != SDK_SUCCESS)
+		{
+			return SDK_FAILURE;
+		}
+
+		if(clStringSearch.setupCL_per_loop() != SDK_SUCCESS)
 		{
 			return SDK_FAILURE;
 		}
@@ -671,13 +695,18 @@ int main(int argc, char* argv[])
 			return SDK_FAILURE;
 		}
 
-		if(clStringSearch.cleanup() != SDK_SUCCESS)
+		if(clStringSearch.cleanup_per_loop() != SDK_SUCCESS)
 		{
 			return SDK_FAILURE;
 		}
 
 		//std::cout << "still running, " << __FILE__ << ":" << __LINE__ << std::endl; //debug point
 	} while( !clStringSearch.posAtEOF() );
+
+	if(clStringSearch.cleanup_permenant() != SDK_SUCCESS)
+	{
+		return SDK_FAILURE;
+	}
 
 	// Cleanup resources created
 
